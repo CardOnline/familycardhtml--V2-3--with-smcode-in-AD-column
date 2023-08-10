@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>File Handling</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css?family=Lato|Roboto|Source+Code+Pro" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/monokai.min.css">
+    <link rel="stylesheet" href="demo.css">
+    <script type="text/javascript" src="./csv_family_card_script.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.18.8/package/dist/xlsx.mini.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js" integrity="sha512-csNcFYJniKjJxRWRV1R7fvnXrycHP6qDR21mgz1ZP55xY5d+aHLfo9/FcGDQLfn2IfngbAHd8LdfsagcCqgTcQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  </head>
+
+  <body>
+
+    <div id="header" class="github_heading" >
+      <h1 id="title">Load from File</h1>
+
+      <div id="link"><a href="https://github.com/evanplaice/jquery-csv">GitHub</a></div>
+    </div>
+    <div id="container">
+      <section id="content">
+        <!-- version V1-3 Changed contents of this h2 -->
+        <h2>Preparing file for family cards of Star Health</h2>
+        <p>Please use first blue button to submit CSV file from Premia <hr>
+           Then click the second blue button to get download.csv file.
+           This download.csv file is to be converted to xlsx and then uploaded to Card-online.biz portal.</p>
+        <hr>
+        <h2>Input</h2>
+        <div class="mydiv">
+          <input  class="btn btn-primary" type="file" accept=".csv" id="files" name="files[]" />
+          <h2>You submitted individual records: <sp id="report_source_count"></sp></h2>
+        </div>
+        <div class="mydiv">
+          <button class="btn btn-primary" id="button_proceed" name="button" disabled=true >Process and download XLSX (Sorted with SM Code and Customer ID)</button>
+          <h2>Family cards record quantity is: <span id="report_family_record_count"></span></h2>
+        </div>
+
+        <hr />
+        <div class="fileinfo_result">
+          <h2>FileInfo</h2>
+          <div id="file-info"></div>
+          <hr />
+          <h2>Result</h2>
+          <textarea id="result" style="height: 250px;"></textarea>
+        </div>
+      </section>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.js" integrity="sha256-fNXJFIlca05BIO2Y5zh1xrShK3ME+/lYZ0j+ChxX2DA=" crossorigin="anonymous"></script>
+    <script src="./jquery.csv.js"></script>
+    <script src="helpers.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/highlight.min.js"></script>
+    <script>
+      // enable syntax highlighting
+      hljs.initHighlightingOnLoad();
+      data=[[],];
+      $(document).ready(function() {
+        if(isFileAPIAvailable()) {
+          $('#files').bind('change', handleDialog);
+          $('#button_proceed').click(processData);
+        }
+      });
+
+      function processData(event){
+        $("#report_source_count").text(data.length-1);
+        $("#mydiv").hover(location.href + " #mydiv");
+        result_count=take_data_and_make_family_csv(data);
+        $("#report_family_record_count").text(result_count-1);
+
+      }
+
+
+      function handleDialog(event) {
+        var files = event.target.files;
+        var file = files[0];
+        // Disable the button after submitting file.
+        $("#files").attr("disabled", true);
+        $("#button_proceed").attr("disabled", false);
+
+        var fileInfo = `
+          <span style="font-weight:bold;">${escape(file.name)}</span><br>
+          - FileType: ${file.type || 'n/a'}<br>
+          - FileSize: ${file.size} bytes<br>
+          - LastModified: ${file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() : 'n/a'}
+        `;
+        $('#file-info').append(fileInfo);
+
+        var reader = new FileReader();
+        reader.readAsText(file);
+        reader.onload = function(event){
+          var csv = event.target.result;
+          data = $.csv.toArrays(csv);
+          heading_array=data.slice(0,1);
+          data_portion=data.slice(1,);
+          sort_wrt_smcode_customerID(data_portion);
+          data=heading_array.concat(data_portion);
+          $('#result').empty();
+          $('#result').html(JSON.stringify(data, null, 2));
+        }
+      }
+
+      function sort_wrt_smcode_customerID(data){
+        // in data array of arrays, the 9th and 1st items are sm code and customer id
+        data.sort(function(a, b){
+          let x = a[8];
+          let y = b[8];
+          if (x < y) {return 1;}
+          if (x > y) {return -1;}
+          if (x==y) {
+          	let p= a[1];
+              let q= b[1];
+          	if (p<q) {return -1;}
+              if (p>q) {return 1;}
+              return 0;
+          }
+        });
+
+      }
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+  </body>
+</html>
